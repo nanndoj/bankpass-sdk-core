@@ -16,17 +16,9 @@
 import {RequestScope} from "./types/RequestScopes";
 import {ServiceAccountOptions} from "./types/ServiceAccountOptions";
 import {Client} from "./client";
-import * as path from "path";
-import * as fs from "fs";
-import * as stream from "stream";
 import {ClientFactory} from "./types/ClientFactory";
 
 export interface AuthOptions {
-    /**
-     * Path to a .json, .pem, or .p12 key file
-     */
-    keyFile?: string;
-
     /**
      * Object containing client_email and private_key properties
      */
@@ -68,14 +60,12 @@ export class Auth {
     _cachedProjectId?: string | null;
 
     cachedCredential?: Client;
-    keyFilename?: string;
     scopes?: RequestScope | RequestScope[];
     jsonContent: ServiceAccountOptions | null = null;
     clientFactory: ClientFactory;
 
     constructor(private opts: AuthOptions = {}, clientFactory: ClientFactory) {
         this._cachedProjectId = opts.projectId || null;
-        this.keyFilename = opts.keyFile;
         this.scopes = opts.scopes;
         this.jsonContent = opts.credentials;
         this.clientFactory = clientFactory;
@@ -91,12 +81,6 @@ export class Auth {
 
         if (this.jsonContent) {
             this.cachedCredential = this.fromJSON(this.jsonContent);
-        }
-
-        if (this.keyFilename) {
-            const filePath = path.resolve(path.dirname(require.main.filename), this.keyFilename);
-            const stream = fs.createReadStream(filePath);
-            this.cachedCredential = await this.fromStreamAsync(stream);
         }
 
         return this.cachedCredential;
@@ -118,36 +102,5 @@ export class Auth {
         this.jsonContent = json;
         return this.clientFactory.getClient(this.jsonContent);
 
-    }
-
-    /**
-     * Create a credentials instance using the given input stream.
-     * @param inputStream The input stream.
-     * @returns Client with data
-     */
-    private fromStreamAsync(
-        inputStream: stream.Readable,
-    ): Promise<Client> {
-        return new Promise((resolve, reject) => {
-            if (!inputStream) {
-                throw new Error(
-                    'Must pass in a stream containing the Google auth settings.'
-                );
-            }
-            let s = '';
-            inputStream
-                .setEncoding('utf8')
-                .on('error', reject)
-                .on('data', chunk => (s += chunk))
-                .on('end', () => {
-                    try {
-                        const data = JSON.parse(s);
-                        const r = this.fromJSON(data);
-                        return resolve(r);
-                    } catch (err) {
-                        return reject(err);
-                    }
-                });
-        });
     }
 }
