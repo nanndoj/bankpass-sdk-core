@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 import {ServiceAccountOptions} from "./types/ServiceAccountOptions";
-import { createSign } from "crypto";
-import fetch from "node-fetch";
 import { RETRY_DELAY_MS, MAX_RETRIES } from "./constants";
 import { RequestStatus } from "./types/RequestStatus";
 
-export class Client  {
+export abstract class Client  {
 
-    email: string;
     key: string;
     keyId: string;
     projectId: string;
@@ -29,6 +26,9 @@ export class Client  {
     apiEndpoint: string;
 
     private accessToken: string;
+
+    protected abstract sign(message: any);
+    protected abstract fetch(url: string, opts: any);
 
     constructor(private opts: ServiceAccountOptions) {
         this.fromJSON(opts);
@@ -58,17 +58,6 @@ export class Client  {
         this.apiEndpoint = json.api_endpoint;
     }
 
-    /**
-     * Sign the data using the private key and returns the signature
-     *
-     */
-    private sign(data: any): string {
-        const sign = createSign('SHA256');
-        sign.update(JSON.stringify(data));
-        sign.end();
-        return sign.sign(this.key, 'hex');
-    }
-
     public request(path: string, body: any): Promise<any> {
         // Get an access Token
         return this.authorizedFetch(this.apiEndpoint + path, {
@@ -83,7 +72,7 @@ export class Client  {
 
     private fetchWithRetry = (url, options, n = 1) => {
         return new Promise((resolve, reject) => {
-            fetch(url, options)
+            this.fetch(url, options)
                 .then(response => {
                     if (response.status >= 400 && response.status < 410) {
                         return response.text().then(text => {
@@ -195,20 +184,20 @@ export class Client  {
             timestamp: new Date().toISOString()
         };
 
-        const signature = this.sign(preparedData);
+        return this.sign(preparedData).then(signature => {
+            // Configure a new request to the token API
+            const req = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'signature': signature
+                },
+                body: JSON.stringify(preparedData)
+            };
 
-        // Configure a new request to the token API
-        const req = {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'signature': signature
-            },
-            body: JSON.stringify(preparedData)
-        };
-
-        // Issue a request to get the token
-        return this.fetchWithRetry(this.tokenURI, req);
+            // Issue a request to get the token
+            return this.fetchWithRetry(this.tokenURI, req);
+        });
     };
 
 

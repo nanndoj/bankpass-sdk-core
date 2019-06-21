@@ -19,6 +19,7 @@ import {Client} from "./client";
 import * as path from "path";
 import * as fs from "fs";
 import * as stream from "stream";
+import {ClientFactory} from "./types/ClientFactory";
 
 export interface AuthOptions {
     /**
@@ -70,13 +71,14 @@ export class Auth {
     keyFilename?: string;
     scopes?: RequestScope | RequestScope[];
     jsonContent: ServiceAccountOptions | null = null;
+    clientFactory: ClientFactory;
 
-    constructor(private opts?: AuthOptions) {
-        opts = opts || {};
+    constructor(private opts: AuthOptions = {}, clientFactory: ClientFactory) {
         this._cachedProjectId = opts.projectId || null;
         this.keyFilename = opts.keyFile;
         this.scopes = opts.scopes;
         this.jsonContent = opts.credentials;
+        this.clientFactory = clientFactory;
     }
 
     /**
@@ -92,7 +94,7 @@ export class Auth {
         }
 
         if (this.keyFilename) {
-            const filePath = path.resolve(__dirname, this.keyFilename);
+            const filePath = path.resolve(path.dirname(require.main.filename), this.keyFilename);
             const stream = fs.createReadStream(filePath);
             this.cachedCredential = await this.fromStreamAsync(stream);
         }
@@ -114,7 +116,7 @@ export class Auth {
         }
 
         this.jsonContent = json;
-        return new Client(this.jsonContent);
+        return this.clientFactory.getClient(this.jsonContent);
 
     }
 
