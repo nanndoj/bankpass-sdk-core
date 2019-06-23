@@ -60,15 +60,9 @@ export abstract class Client  {
         this.apiEndpoint = json.api_endpoint;
     }
 
-    public request(path: string, body: any): Promise<any> {
+    public request(path: string, request: any): Promise<any> {
         // Get an access Token
-        return this.authorizedFetch(this.apiEndpoint + path, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body)
-        });
+        return this.authorizedFetch(this.apiEndpoint + path, request);
 
     }
 
