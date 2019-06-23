@@ -27,6 +27,7 @@ export abstract class Client  {
     apiEndpoint: string;
 
     private accessToken: string;
+    private authorizationCode: string;
 
     protected abstract sign(message: any);
     protected abstract fetch(url: string, opts: any);
@@ -182,7 +183,9 @@ export abstract class Client  {
     private fetchToken = () => {
         const preparedData = {
             keyId: this.keyId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            // include the authorizationCode if specified
+            authorizationCode: this.authorizationCode
         };
 
         return this.sign(preparedData).then(signature => {
@@ -204,6 +207,10 @@ export abstract class Client  {
 
     public setAccessToken = (accessToken: string) => {
         this.accessToken = accessToken;
+    };
+
+    public setAuthorizationCode = (authorizationCode: string) => {
+        this.authorizationCode = authorizationCode;
     };
 
     private fetchWithToken = (url, request, token) => {
