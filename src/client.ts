@@ -16,6 +16,7 @@
 import {ServiceAccountOptions} from "./types/ServiceAccountOptions";
 import { RETRY_DELAY_MS, MAX_RETRIES } from "./constants";
 import { RequestStatus } from "./types/RequestStatus";
+import { encode } from 'base-64';
 
 export abstract class Client  {
 
@@ -190,7 +191,7 @@ export abstract class Client  {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'signature': signature
+                    'signature': encode(signature)
                 },
                 body: JSON.stringify(preparedData)
             };
